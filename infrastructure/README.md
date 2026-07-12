@@ -3,6 +3,7 @@
 - `docker/`: local multi-container development.
 - `helm/space-cargo/`: the authoritative Kubernetes application deployment, including Istio routing and security resources.
 - `istio/`: AWS NLB configuration for the official Istio ingress-gateway chart.
+- `ansible/`: repeatable EKS administration-host bootstrap and deployment playbooks.
 
 The Helm chart is the single application deployment source for CI/CD and Argo CD.
 
@@ -48,3 +49,5 @@ helm upgrade --install space-cargo infrastructure/helm/space-cargo \
 The standard EKS cluster must have the AWS Load Balancer Controller and Amazon VPC CNI configured. The ingress gateway uses NLB IP targets, so the NLB sends traffic directly to gateway pod IPs. The cluster also needs Metrics Server for HPA. Use a CNI configuration that enforces Kubernetes `NetworkPolicy`, such as VPC CNI network-policy mode or Cilium.
 
 Only `istio-ingressgateway` is a `LoadBalancer` Service. The frontend and all APIs remain `ClusterIP`, so this configuration creates one application NLB.
+
+For a repeatable deployment from the EC2 administration host, see [`ansible/README.md`](ansible/README.md).

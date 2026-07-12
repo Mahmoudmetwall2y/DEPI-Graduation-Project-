@@ -18,6 +18,8 @@ infrastructure/
 
 See [`infrastructure/README.md`](infrastructure/README.md) for deployment commands and prerequisites.
 
+See [`docs/DEVOPS_PRESENTATION_GUIDE.md`](docs/DEVOPS_PRESENTATION_GUIDE.md) for a detailed, file-by-file explanation of the complete DevOps layer.
+
 ## Architecture notes
 
 The browser reaches the frontend and APIs through the Istio ingress gateway. The cargo service calls telemetry and routing internally. Istio enforces strict mTLS and workload authorization, while Kubernetes provides probes, resource controls, disruption budgets, restricted pod security, network policy, and telemetry HPA behavior.

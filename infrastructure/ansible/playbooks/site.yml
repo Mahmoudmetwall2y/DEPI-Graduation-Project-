@@ -1,0 +1,4 @@
+---
+- import_playbook: bootstrap-admin-host.yml
+- import_playbook: deploy-eks.yml
+

@@ -1,0 +1,133 @@
+---
+- name: Prepare the EKS administration host
+  hosts: eks_admin
+  gather_facts: true
+  become: false
+  vars:
+    helm_archive: /tmp/helm-{{ helm_version }}-linux-amd64.tar.gz
+    helm_extract_dir: /tmp/helm-{{ helm_version }}
+    eksctl_archive: /tmp/eksctl_Linux_amd64.tar.gz
+    eksctl_extract_dir: /tmp/eksctl
+  tasks:
+    - name: Require a Linux administration host
+      ansible.builtin.assert:
+        that:
+          - ansible_system == "Linux"
+        fail_msg: Run these playbooks from a Linux EC2 administration host.
+
+    - name: Install operating-system prerequisites
+      ansible.builtin.package:
+        name:
+          - awscli
+          - curl
+          - git
+          - gzip
+          - python3-pip
+          - tar
+          - unzip
+        state: present
+      become: true
+
+    - name: Install Docker when image publishing is requested
+      ansible.builtin.package:
+        name: docker
+        state: present
+      become: true
+      when: build_and_push_images | bool
+
+    - name: Start Docker when image publishing is requested
+      ansible.builtin.service:
+        name: docker
+        enabled: true
+        state: started
+      become: true
+      when: build_and_push_images | bool
+
+    - name: Allow the administration user to access Docker
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: true
+      become: true
+      when: build_and_push_images | bool
+
+    - name: Download kubectl
+      ansible.builtin.get_url:
+        url: https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: "0755"
+      become: true
+
+    - name: Download Helm archive
+      ansible.builtin.get_url:
+        url: https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz
+        dest: "{{ helm_archive }}"
+        mode: "0644"
+
+    - name: Create Helm extraction directory
+      ansible.builtin.file:
+        path: "{{ helm_extract_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Extract Helm
+      ansible.builtin.unarchive:
+        src: "{{ helm_archive }}"
+        dest: "{{ helm_extract_dir }}"
+        remote_src: true
+        creates: "{{ helm_extract_dir }}/linux-amd64/helm"
+
+    - name: Install Helm binary
+      ansible.builtin.copy:
+        src: "{{ helm_extract_dir }}/linux-amd64/helm"
+        dest: /usr/local/bin/helm
+        mode: "0755"
+        remote_src: true
+      become: true
+
+    - name: Download eksctl archive
+      ansible.builtin.get_url:
+        url: https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz
+        dest: "{{ eksctl_archive }}"
+        mode: "0644"
+
+    - name: Create eksctl extraction directory
+      ansible.builtin.file:
+        path: "{{ eksctl_extract_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Extract eksctl
+      ansible.builtin.unarchive:
+        src: "{{ eksctl_archive }}"
+        dest: "{{ eksctl_extract_dir }}"
+        remote_src: true
+        creates: "{{ eksctl_extract_dir }}/eksctl"
+
+    - name: Install eksctl binary
+      ansible.builtin.copy:
+        src: "{{ eksctl_extract_dir }}/eksctl"
+        dest: /usr/local/bin/eksctl
+        mode: "0755"
+        remote_src: true
+      become: true
+
+    - name: Verify the EC2 IAM identity
+      ansible.builtin.command:
+        argv:
+          - aws
+          - sts
+          - get-caller-identity
+      changed_when: false
+
+    - name: Configure kubeconfig for the EKS cluster
+      ansible.builtin.command:
+        argv:
+          - aws
+          - eks
+          - update-kubeconfig
+          - --name
+          - "{{ eks_cluster_name }}"
+          - --region
+          - "{{ aws_region }}"
+      changed_when: false

@@ -7,7 +7,8 @@ __pycache__/
 .vscode/
 *.log
 .DS_Store
-
+docs
+/docs
 # Terraform (for the next project phase)
 .terraform/
 *.tfstate
