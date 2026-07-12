@@ -4,7 +4,7 @@
   gather_facts: false
   become: false
   vars:
-    project_root: "{{ playbook_dir }}/../../.."
+    project_root: "{{ remote_project_root }}"
     lbc_policy_file: /tmp/aws-load-balancer-controller-iam-policy.json
   tasks:
     - name: Verify Kubernetes access

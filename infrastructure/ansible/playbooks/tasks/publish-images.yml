@@ -15,6 +15,7 @@
   environment:
     DOCKERHUB_TOKEN: "{{ lookup('ansible.builtin.env', 'DOCKERHUB_TOKEN') }}"
   no_log: true
+  become: true
   changed_when: false
 
 - name: Build application images
@@ -35,6 +36,7 @@
       context: services/telemetry-service
     - image: depi-routing-service
       context: services/routing-service
+  become: true
 
 - name: Push application images
   ansible.builtin.command:
@@ -47,4 +49,4 @@
     - depi-cargo-service
     - depi-telemetry-service
     - depi-routing-service
-
+  become: true

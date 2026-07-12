@@ -1,6 +1,6 @@
 # Ansible deployment from the EKS administration EC2 host
 
-These playbooks turn the manual platform setup into one repeatable deployment command. Run them **on the Linux EC2 administration host** after that host has an IAM role with EKS access.
+These playbooks turn the manual platform setup into one repeatable deployment command. Run them either **on the Linux EC2 administration host** or from a WSL Ansible control node on your PC. The EC2 host must have an IAM role with EKS access.
 
 The playbooks install command-line tools, configure kubeconfig, install Metrics Server, AWS Load Balancer Controller, Istio CNI/control plane/gateway, create the secured application namespace, and deploy the `space-cargo` Helm chart.
 
@@ -26,6 +26,8 @@ cp group_vars/all.yml.example group_vars/all.yml
 
 Edit `group_vars/all.yml` and set the actual EKS cluster name and AWS region. Keep `build_and_push_images: false` when images are already in Docker Hub.
 
+Set `remote_project_root` to the absolute repository path on EC2.
+
 ## Run
 
 ```bash
@@ -33,6 +35,31 @@ ansible-playbook playbooks/site.yml
 ```
 
 The inventory targets `localhost`, so Ansible configures the EC2 host on which it runs.
+
+## Run from WSL on your PC
+
+1. Install Ansible in WSL and confirm that your private SSH key can connect to EC2.
+2. Clone this repository on **both** WSL and EC2. The remote EC2 checkout is required because Helm commands run there.
+3. In WSL, create a remote inventory:
+
+   ```bash
+   cp inventory/hosts.remote.ini.example inventory/hosts.remote.ini
+   ```
+
+4. Replace the EC2 host, WSL username, and private-key path in `inventory/hosts.remote.ini`.
+5. Verify SSH and Ansible connectivity:
+
+   ```bash
+   ansible -i inventory/hosts.remote.ini eks_admin -m ping
+   ```
+
+6. Run the deployment from WSL:
+
+   ```bash
+   ansible-playbook -i inventory/hosts.remote.ini playbooks/site.yml
+   ```
+
+Use the default `inventory/hosts.ini` only when Ansible runs directly on EC2.
 
 ## First deployment with image publishing
 
@@ -44,8 +71,6 @@ ansible-playbook playbooks/site.yml --extra-vars build_and_push_images=true
 ```
 
 The token is passed only as a process environment variable and is never stored in Git.
-
-If the playbook installs Docker, disconnect and reconnect to the EC2 host before rerunning the image-publishing command so that the new `docker` group membership takes effect.
 
 ## Verification
 

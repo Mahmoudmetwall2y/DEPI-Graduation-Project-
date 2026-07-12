@@ -2,7 +2,7 @@
 eks_cluster_name: EKS-Cluster
 aws_region: eu-central-1
 
-# Absolute project path on the EC2 host. Update this after cloning the repository there.
+# Absolute project path on the Linux EC2 administration host.
 remote_project_root: /home/ec2-user/DEPI-Graduation-Project-
 
 # Keep kubectl within one minor version of the EKS control plane.
