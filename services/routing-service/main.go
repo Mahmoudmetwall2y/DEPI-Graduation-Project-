@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -76,8 +77,12 @@ func main() {
 		w.Write([]byte(`{"service":"routing-service","status":"running"}`))
 	})
 
-	log.Println("Starting Go Routing Service on port 8000...")
-	if err := http.ListenAndServe(":8000", nil); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+	log.Printf("Starting Go Routing Service on port %s...", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }

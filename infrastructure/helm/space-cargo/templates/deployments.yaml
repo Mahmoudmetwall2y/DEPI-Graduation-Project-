@@ -1,0 +1,95 @@
+{{- range $name, $service := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    {{- include "space-cargo.labels" $ | nindent 4 }}
+spec:
+  {{- if not (and $service.autoscaling $service.autoscaling.enabled) }}
+  replicas: {{ $service.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        app.kubernetes.io/part-of: {{ include "space-cargo.name" $ }}
+    spec:
+      serviceAccountName: {{ $service.serviceAccount }}
+      terminationGracePeriodSeconds: 30
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ $service.runAsUser }}
+        runAsGroup: {{ $service.runAsUser }}
+        fsGroup: {{ $service.runAsUser }}
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.global.imageRegistry }}/{{ $service.image }}:{{ $service.tag }}"
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $service.port }}
+              protocol: TCP
+          {{- with $service.env }}
+          env:
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          startupProbe:
+            httpGet:
+              path: {{ $service.healthPath }}
+              port: http
+            failureThreshold: 12
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: {{ $service.healthPath }}
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: {{ $service.healthPath }}
+              port: http
+            periodSeconds: 10
+          resources:
+            {{- toYaml $service.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          {{- with $service.writableVolumes }}
+          volumeMounts:
+            {{- range . }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+          {{- end }}
+      {{- with $service.writableVolumes }}
+      volumes:
+        {{- range . }}
+        - name: {{ .name }}
+          emptyDir: {}
+        {{- end }}
+      {{- end }}
+{{- end }}

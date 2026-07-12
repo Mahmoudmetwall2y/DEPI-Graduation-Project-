@@ -1,0 +1,91 @@
+{{- if and .Values.istio.enabled .Values.istio.authorizationPolicy.enabled }}
+{{- $ingressPrincipal := printf "%s/ns/%s/sa/%s" .Values.istio.trustDomain .Values.istio.ingressGateway.namespace .Values.istio.ingressGateway.serviceAccount }}
+{{- $frontendPrincipal := printf "%s/ns/%s/sa/frontend" .Values.istio.trustDomain .Release.Namespace }}
+{{- $cargoPrincipal := printf "%s/ns/%s/sa/cargo-service" .Values.istio.trustDomain .Release.Namespace }}
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: default-deny
+spec: {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-frontend
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: frontend
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - {{ $ingressPrincipal | quote }}
+      to:
+        - operation:
+            ports:
+              - "8080"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-cargo-service
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cargo-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - {{ $ingressPrincipal | quote }}
+              - {{ $frontendPrincipal | quote }}
+      to:
+        - operation:
+            ports:
+              - "8000"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-telemetry-service
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: telemetry-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - {{ $ingressPrincipal | quote }}
+              - {{ $frontendPrincipal | quote }}
+              - {{ $cargoPrincipal | quote }}
+      to:
+        - operation:
+            ports:
+              - "8000"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-routing-service
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: routing-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - {{ $ingressPrincipal | quote }}
+              - {{ $frontendPrincipal | quote }}
+              - {{ $cargoPrincipal | quote }}
+      to:
+        - operation:
+            ports:
+              - "8000"
+{{- end }}
