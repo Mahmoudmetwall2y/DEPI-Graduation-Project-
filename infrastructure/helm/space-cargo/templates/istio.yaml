@@ -1,0 +1,95 @@
+{{- if .Values.istio.enabled }}
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.istio.gateway.name }}
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        {{- toYaml .Values.istio.hosts | nindent 8 }}
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: space-cargo
+spec:
+  hosts:
+    {{- toYaml .Values.istio.hosts | nindent 4 }}
+  gateways:
+    - {{ .Values.istio.gateway.name }}
+  http:
+    - name: cargo-api
+      match:
+        - uri:
+            prefix: /api/cargo
+      route:
+        - destination:
+            host: cargo-service
+            port:
+              number: 8000
+      timeout: 10s
+    - name: telemetry-api
+      match:
+        - uri:
+            prefix: /api/telemetry
+      route:
+        - destination:
+            host: telemetry-service
+            port:
+              number: 8000
+      timeout: 10s
+    - name: routing-api
+      match:
+        - uri:
+            prefix: /api/routing
+      route:
+        - destination:
+            host: routing-service
+            port:
+              number: 8000
+      timeout: 15s
+    - name: frontend
+      route:
+        - destination:
+            host: frontend
+            port:
+              number: 8080
+      timeout: 10s
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+spec:
+  mtls:
+    mode: {{ .Values.istio.mtlsMode }}
+{{- range $name, $service := .Values.services }}
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ $name }}
+spec:
+  host: {{ $name }}
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 100
+        maxRequestsPerConnection: 20
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+{{- end }}
+{{- end }}

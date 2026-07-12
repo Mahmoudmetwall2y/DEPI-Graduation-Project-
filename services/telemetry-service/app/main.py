@@ -1,7 +1,7 @@
 import random
 import time
 import threading
-from fastapi import FastAPI, Response, Request, BackgroundTasks
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
@@ -84,10 +84,10 @@ def get_telemetry(cargo_id: str):
     pressure = round(101.3 + random.uniform(-2.0, 2.0), 2)
     
     status = "Optimal"
-    if vibration > 4.0 or temp > 24.0:
-        status = "Warning"
-    elif vibration > 4.4 or temp > 24.8:
+    if vibration > 4.4 or temp > 24.8:
         status = "Critical"
+    elif vibration > 4.0 or temp > 24.0:
+        status = "Warning"
 
     return {
         "cargo_id": cargo_id,
@@ -100,12 +100,12 @@ def get_telemetry(cargo_id: str):
     }
 
 @app.post("/api/telemetry/simulate-load")
-def trigger_load_simulation(request: LoadSimulationRequest, background_tasks: BackgroundTasks):
+def trigger_load_simulation(request: LoadSimulationRequest):
     duration = min(300, max(5, request.duration_seconds)) # cap between 5s and 5m
     cores = min(4, max(1, request.cores)) # cap cores simulation
     
     for _ in range(cores):
-        background_tasks.add_task(cpu_burner, duration)
+        threading.Thread(target=cpu_burner, args=(duration,), daemon=True).start()
         
     return {
         "message": f"Load simulation triggered successfully on {cores} thread(s) for {duration} seconds.",

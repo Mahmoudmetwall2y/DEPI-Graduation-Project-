@@ -1,14 +1,14 @@
-FROM python:3.10-slim
+FROM python:3.12.11-slim-bookworm
 
 # Create a non-privileged system user and group (K8s Security Compliance)
-RUN groupadd -g 10001 appgroup && \
-    useradd -u 10001 -g appgroup -m -s /bin/bash appuser
+RUN groupadd --gid 10001 appgroup && \
+    useradd --uid 10001 --gid appgroup --no-create-home --shell /usr/sbin/nologin appuser
 
 WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --disable-pip-version-check -r requirements.txt
 
 # Copy application files
 COPY app/ ./app/
@@ -24,5 +24,7 @@ EXPOSE 8000
 ENV PORT=8000
 ENV TELEMETRY_SERVICE_URL=http://telemetry-service:8000
 ENV ROUTING_SERVICE_URL=http://routing-service:8000
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
