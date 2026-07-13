@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: 'https://github.com/Mahmoudmetwall2y/DEPI-Graduation-Project-'
-    targetRevision: main
+    targetRevision: feature/gitops-app-of-apps
     path: infrastructure/helm/space-cargo
     helm:
       valueFiles:
