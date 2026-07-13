@@ -1,0 +1,26 @@
+nameOverride: ""
+fullnameOverride: ""
+namespace:
+  create: false
+  name: space-cargo
+
+global:
+  imageRegistry: docker.io/mahmoudmetwall2y
+  imagePullPolicy: IfNotPresent
+
+networkPolicy:
+  enabled: true
+
+istio:
+  enabled: true
+  trustDomain: cluster.local
+  gateway:
+    name: space-cargo-gateway
+  ingressGateway:
+    namespace: istio-system
+    serviceAccount: istio-ingressgateway
+  hosts:
+    - "*"
+  mtlsMode: STRICT
+  authorizationPolicy:
+    enabled: true

@@ -1,0 +1,35 @@
+nameOverride: ""
+fullnameOverride: ""
+namespace:
+  create: false
+  name: space-cargo
+
+global:
+  imageRegistry: docker.io/mahmoudmetwall2y
+  imagePullPolicy: IfNotPresent
+services:
+  cargo-service:
+      image: depi-cargo-service
+      tag: ""
+      replicas: 1
+      port: 8000
+      healthPath: /health
+      serviceAccount: cargo-service
+      runAsUser: 10001
+      env:
+        TELEMETRY_SERVICE_URL: http://telemetry-service:8000
+        ROUTING_SERVICE_URL: http://routing-service:8000
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+      pdb:
+        enabled: false
+networkPolicy:
+  enabled: false
+
+istio:
+  enabled: false

@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: routing-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Mahmoudmetwall2y/DEPI-Graduation-Project-'
+    targetRevision: main
+    path: infrastructure/helm/space-cargo
+    helm:
+      valueFiles:
+        - routing-cargo.yaml
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: space-cargo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

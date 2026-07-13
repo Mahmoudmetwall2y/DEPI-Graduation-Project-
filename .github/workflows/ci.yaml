@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/gitops-app-of-apps
     paths:
       - "services/**"
       - ".github/workflows/ci.yaml"
@@ -21,7 +22,7 @@ env:
   CARGO_IMAGE: depi-cargo-service
   TELEMETRY_IMAGE: depi-telemetry-service
   ROUTING_IMAGE: depi-routing-service
-  VALUES_PATH: infrastructure/helm/space-cargo/values.yaml
+  HELM_DIR: infrastructure/helm/space-cargo
 
 jobs:
   test-and-build:
@@ -49,15 +50,15 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r services/cargo-service/requirements.txt
           python -m pip install -r services/telemetry-service/requirements.txt
-          
+
           cd services/routing-service
           go test ./... -v
-          
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Show Image Tag
-        run: 'echo "Building Docker images with tag: ${{ github.sha  }}"'
+        run: 'echo "Building Docker images with tag: ${{ github.sha }}"'
 
       - name: Log in to Docker Hub
         if: github.event_name == 'push'
@@ -73,7 +74,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha  }}
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
       - name: Build and optionally push cargo image
         uses: docker/build-push-action@v6
@@ -82,7 +83,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_NAMESPACE }}/${{ env.CARGO_IMAGE }}:latest
-            ${{ env.IMAGE_NAMESPACE }}/${{ env.CARGO_IMAGE }}:${{ github.sha  }}
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.CARGO_IMAGE }}:${{ github.sha }}
 
       - name: Build and optionally push telemetry image
         uses: docker/build-push-action@v6
@@ -91,7 +92,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_NAMESPACE }}/${{ env.TELEMETRY_IMAGE }}:latest
-            ${{ env.IMAGE_NAMESPACE }}/${{ env.TELEMETRY_IMAGE }}:${{ github.sha  }}
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.TELEMETRY_IMAGE }}:${{ github.sha }}
 
       - name: Build and optionally push routing image
         uses: docker/build-push-action@v6
@@ -100,12 +101,12 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_NAMESPACE }}/${{ env.ROUTING_IMAGE }}:latest
-            ${{ env.IMAGE_NAMESPACE }}/${{ env.ROUTING_IMAGE }}:${{ github.sha  }}
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.ROUTING_IMAGE }}:${{ github.sha }}
 
   update-helm-values:
     name: Update Helm image tags
     needs: test-and-build
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'feature/gitops-app-of-apps')
     runs-on: ubuntu-latest
 
     steps:
@@ -114,48 +115,64 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update image tags in Helm values
+      - name: Update image tags in separate Helm files
         env:
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          IMAGE_TAG: ${{ github.sha }} # تم تصليح المتغير هنا ليكون متاحاً داخل الـ Step
         run: |
-          python3 - "$VALUES_PATH" "$IMAGE_TAG" <<'PY'
+          python3 - "$HELM_DIR" "$IMAGE_TAG" <<'PY'
           import re
           import sys
           from pathlib import Path
 
-          values_path = Path(sys.argv[1])
+          helm_dir = Path(sys.argv[1])
           image_tag = sys.argv[2]
-          services = [
-              "frontend",
-              "cargo-service",
-              "telemetry-service",
-              "routing-service",
-          ]
-          content = values_path.read_text()
 
-          for service in services:
+          # خريطة تربط اسم الخدمة بملف الـ values الخاص بيها بعد الفصل
+          service_files = {
+              "frontend": "values-frontend.yaml",
+              "cargo-service": "values-cargo.yaml",
+              "telemetry-service": "values-telemetry-service.yaml", # تأكد من مطابقة الاسم عندك
+              "routing-service": "values-routing.yaml"
+          }
+
+          for service, file_name in service_files.items():
+              values_path = helm_dir / file_name
+              if not values_path.exists():
+                  print(f"Skipping {file_name}, file not found.")
+                  continue
+                  
+              content = values_path.read_text()
               pattern = rf"(^  {re.escape(service)}:\n(?:    .*\n)*?    tag: ).*$"
+              
               content, replacements = re.subn(
                   pattern,
                   rf'\g<1>"{image_tag}"',
                   content,
                   flags=re.MULTILINE,
               )
-              if replacements != 1:
-                  raise SystemExit(f"Expected exactly one tag for {service}, found {replacements}")
-
-          values_path.write_text(content)
+              
+              if replacements == 1:
+                  values_path.write_text(content)
+                  print(f"Successfully updated tag to {image_tag} in {file_name}")
+              else:
+                  print(f"Warning: Could not update tag for {service} in {file_name}. Matches found: {replacements}")
           PY
 
       - name: Commit Helm image tags when changed
         run: |
-          if git diff --quiet -- "$VALUES_PATH"; then
+          if git diff --quiet -- "$HELM_DIR"; then
             echo "Helm image tags are already current."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$VALUES_PATH"
-          git commit -m "chore(gitops): update images to $GITHUB_SHA"
-          git push origin HEAD:main
+          git add "$HELM_DIR"
+          git commit -m "chore(gitops): update microservices images to $GITHUB_SHA"
+          git push origin HEAD:${{ github.ref_name }}
+
+
+
+          # git add "$HELM_DIR"
+          # git commit -m "chore(gitops): update microservices images to $GITHUB_SHA"
+          # git push origin HEAD:main

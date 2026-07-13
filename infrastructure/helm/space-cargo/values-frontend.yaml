@@ -1,0 +1,38 @@
+nameOverride: ""
+fullnameOverride: ""
+namespace:
+  create: false
+  name: space-cargo
+
+global:
+  imageRegistry: docker.io/mahmoudmetwall2y
+  imagePullPolicy: IfNotPresent
+services:
+  frontend:
+      image: depi-frontend
+      tag: ""
+      replicas: 2
+      port: 8080
+      healthPath: /healthz
+      serviceAccount: frontend
+      runAsUser: 101
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+      writableVolumes:
+        - name: nginx-cache
+          mountPath: /var/cache/nginx
+        - name: nginx-run
+          mountPath: /var/run
+      pdb:
+        enabled: true
+        minAvailable: 1
+networkPolicy:
+  enabled: false
+
+istio:
+  enabled: false

@@ -1,0 +1,38 @@
+nameOverride: ""
+fullnameOverride: ""
+namespace:
+  create: false
+  name: space-cargo
+
+global:
+  imageRegistry: docker.io/mahmoudmetwall2y
+  imagePullPolicy: IfNotPresent
+services:
+  telemetry-service:
+      image: depi-telemetry-service
+      tag: ""
+      replicas: 2
+      port: 8000
+      healthPath: /health
+      serviceAccount: telemetry-service
+      runAsUser: 10001
+      resources:
+        requests:
+          cpu: 100m
+          memory: 96Mi
+        limits:
+          cpu: "1"
+          memory: 256Mi
+      pdb:
+        enabled: true
+        minAvailable: 1
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 6
+        targetCPUUtilizationPercentage: 65
+networkPolicy:
+  enabled: false
+
+istio:
+  enabled: false
