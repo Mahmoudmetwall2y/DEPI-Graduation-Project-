@@ -10,7 +10,7 @@ global:
 services:
   telemetry-service:
       image: depi-telemetry-service
-      tag: ""
+      tag: "latest"
       replicas: 2
       port: 8000
       healthPath: /health
