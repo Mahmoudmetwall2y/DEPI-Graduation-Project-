@@ -247,6 +247,14 @@
           - "{{ istio_version }}"
           - --set
           - pilot.cni.enabled=true
+          - --set
+          - pilot.resources.requests.cpu={{ istiod_resources.requests.cpu }}
+          - --set
+          - pilot.resources.requests.memory={{ istiod_resources.requests.memory }}
+          - --set
+          - pilot.resources.limits.cpu={{ istiod_resources.limits.cpu }}
+          - --set
+          - pilot.resources.limits.memory={{ istiod_resources.limits.memory }}
           - --wait
 
     - name: Install the AWS NLB-backed Istio ingress gateway
