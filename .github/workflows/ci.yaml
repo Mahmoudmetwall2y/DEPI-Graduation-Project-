@@ -161,6 +161,7 @@ jobs:
                   print(f"Warning: Could not update tag for {service} in {file_name}. Matches found: {replacements}")
           PY
 
+
       - name: Commit Helm image tags when changed
         run: |
           if git diff --quiet -- "$HELM_DIR"; then
