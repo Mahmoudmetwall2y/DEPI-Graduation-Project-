@@ -1,8 +1,8 @@
 nameOverride: ""
 fullnameOverride: ""
 namespace:
-  create: true
-  name: argocd
+  create: false
+  name: space-cargo
 
 global:
   imageRegistry: docker.io/mahmoudmetwall2y
