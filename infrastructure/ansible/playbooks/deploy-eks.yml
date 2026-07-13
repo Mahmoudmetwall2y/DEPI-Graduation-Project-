@@ -257,7 +257,33 @@
           - pilot.resources.limits.memory={{ istiod_resources.limits.memory }}
           - --wait
 
-    - name: Install the AWS NLB-backed Istio ingress gateway
+    - name: Read the existing Istio ingress gateway Service type
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - service
+          - istio-ingressgateway
+          - --namespace
+          - istio-system
+          - --output
+          - jsonpath={.spec.type}
+      register: istio_gateway_service_type
+      changed_when: false
+      failed_when: false
+
+    - name: Remove the legacy NLB Service before migrating to ALB
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - delete
+          - service
+          - istio-ingressgateway
+          - --namespace
+          - istio-system
+      when: istio_gateway_service_type.stdout | trim == 'LoadBalancer'
+
+    - name: Install the ClusterIP Istio ingress gateway for ALB
       ansible.builtin.command:
         argv:
           - helm
@@ -270,10 +296,20 @@
           - --version
           - "{{ istio_version }}"
           - --values
-          - "{{ project_root }}/infrastructure/istio/aws-nlb-values.yaml"
+          - "{{ project_root }}/infrastructure/istio/aws-alb-gateway-values.yaml"
           - --wait
           - --timeout
           - 10m
+
+    - name: Create the AWS ALB Ingress for the Istio gateway
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - --filename
+          - "{{ project_root }}/infrastructure/istio/aws-alb-ingress.yaml"
+      register: istio_alb_ingress
+      changed_when: "'created' in istio_alb_ingress.stdout or 'configured' in istio_alb_ingress.stdout"
 
     - name: Create the application namespace
       ansible.builtin.command:
@@ -329,12 +365,12 @@
           - --timeout=10m
       changed_when: false
 
-    - name: Show the Istio ingress gateway service
+    - name: Show the AWS ALB Ingress
       ansible.builtin.command:
         argv:
           - kubectl
           - get
-          - service
+          - ingress
           - istio-ingressgateway
           - --namespace
           - istio-system
