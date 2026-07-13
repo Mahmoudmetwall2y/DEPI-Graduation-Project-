@@ -3,6 +3,8 @@
   hosts: eks_admin
   gather_facts: false
   become: false
+  vars_files:
+    - ../group_vars/all.yml
   vars:
     project_root: "{{ playbook_dir }}/../../.."
     lbc_policy_file: /tmp/aws-load-balancer-controller-iam-policy.json

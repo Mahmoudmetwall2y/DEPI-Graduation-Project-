@@ -3,6 +3,8 @@
   hosts: eks_admin
   gather_facts: true
   become: false
+  vars_files:
+    - ../group_vars/all.yml
   vars:
     helm_archive: /tmp/helm-{{ helm_version }}-linux-amd64.tar.gz
     helm_extract_dir: /tmp/helm-{{ helm_version }}
