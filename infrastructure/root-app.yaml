@@ -6,11 +6,11 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/Mahmoudmetwall2y/DEPI-Graduation-Project-'
+    repoURL: "https://github.com/Mahmoudmetwall2y/DEPI-Graduation-Project-"
     targetRevision: feature/gitops-app-of-apps
     path: infrastructure/argo-apps
   destination:
-    server: 'https://kubernetes.default.svc'
+    server: "https://kubernetes.default.svc"
     namespace: argocd
   syncPolicy:
     automated:

@@ -11,7 +11,7 @@ spec:
     path: infrastructure/helm/space-cargo
     helm:
       valueFiles:
-        - routing-cargo.yaml
+        - values-routing.yaml
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: space-cargo

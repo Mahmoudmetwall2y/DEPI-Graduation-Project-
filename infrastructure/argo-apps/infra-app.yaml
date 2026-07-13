@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: telemetry-service
+  name: space-cargo-infra
   namespace: argocd
 spec:
   project: default
@@ -11,7 +11,7 @@ spec:
     path: infrastructure/helm/space-cargo
     helm:
       valueFiles:
-        - values-telemetry.yaml
+        - values-infra.yaml
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: space-cargo

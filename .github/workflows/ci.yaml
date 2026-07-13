@@ -131,7 +131,7 @@ jobs:
           service_files = {
               "frontend": "values-frontend.yaml",
               "cargo-service": "values-cargo.yaml",
-              "telemetry-service": "values-telemetry-service.yaml", # تأكد من مطابقة الاسم عندك
+              "telemetry-service": "values-telemetry.yaml",
               "routing-service": "values-routing.yaml"
           }
 
