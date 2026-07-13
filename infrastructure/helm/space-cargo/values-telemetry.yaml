@@ -10,7 +10,7 @@ global:
 services:
   telemetry-service:
       image: depi-telemetry-service
-      tag: "8173e1b3e4f2a82af9286301931e6a2b0004f2ad"
+      tag: "4d8ba5048be11c1069118915b4914923b67f2d08"
       replicas: 2
       port: 8000
       healthPath: /health
