@@ -53,10 +53,10 @@ If the playbook installs Docker, disconnect and reconnect to the EC2 host before
 kubectl get nodes
 kubectl get pods -n istio-system
 kubectl get pods -n space-cargo
-kubectl get service istio-ingressgateway -n istio-system
+kubectl get ingress istio-ingressgateway -n istio-system
 ```
 
-When the ingress gateway service receives an external hostname, open `http://<NLB_HOSTNAME>` in a browser.
+When the ALB Ingress receives an external hostname, open `http://<ALB_HOSTNAME>` in a browser.
 
 ## Notes
 

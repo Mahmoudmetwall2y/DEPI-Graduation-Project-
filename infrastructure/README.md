@@ -2,7 +2,7 @@
 
 - `docker/`: local multi-container development.
 - `helm/space-cargo/`: the authoritative Kubernetes application deployment, including Istio routing and security resources.
-- `istio/`: AWS NLB configuration for the official Istio ingress-gateway chart.
+- `istio/`: AWS ALB configuration for the official Istio ingress-gateway chart.
 - `ansible/`: repeatable EKS administration-host bootstrap and deployment playbooks.
 
 The Helm chart is the single application deployment source for CI/CD and Argo CD.
@@ -13,7 +13,7 @@ Container images are configured under the `docker.io/mahmoudmetwall2y` Docker Hu
 # Local application
 docker compose -f infrastructure/docker/compose.yaml up --build
 
-# Install Istio and its single AWS-facing NLB ingress gateway
+# Install Istio and its single AWS-facing ALB ingress gateway
 helm repo add istio https://istio-release.storage.googleapis.com/charts
 helm repo update
 kubectl create namespace istio-system
@@ -32,8 +32,9 @@ helm upgrade --install istiod istio/istiod \
   --wait
 helm upgrade --install istio-ingressgateway istio/gateway \
   --namespace istio-system \
-  --values infrastructure/istio/aws-nlb-values.yaml \
+  --values infrastructure/istio/aws-alb-gateway-values.yaml \
   --wait
+kubectl apply -f infrastructure/istio/aws-alb-ingress.yaml
 
 # Install the application (includes Kubernetes and Istio application resources)
 kubectl create namespace space-cargo
@@ -46,8 +47,8 @@ helm upgrade --install space-cargo infrastructure/helm/space-cargo \
   --namespace space-cargo
 ```
 
-The standard EKS cluster must have the AWS Load Balancer Controller and Amazon VPC CNI configured. The ingress gateway uses NLB IP targets, so the NLB sends traffic directly to gateway pod IPs. The cluster also needs Metrics Server for HPA. Use a CNI configuration that enforces Kubernetes `NetworkPolicy`, such as VPC CNI network-policy mode or Cilium.
+The standard EKS cluster must have the AWS Load Balancer Controller and Amazon VPC CNI configured. The ALB Ingress uses IP targets, so the ALB sends HTTP traffic directly to Istio gateway pod IPs. The cluster also needs Metrics Server for HPA. Use a CNI configuration that enforces Kubernetes `NetworkPolicy`, such as VPC CNI network-policy mode or Cilium.
 
-Only `istio-ingressgateway` is a `LoadBalancer` Service. The frontend and all APIs remain `ClusterIP`, so this configuration creates one application NLB.
+The Istio gateway and all application Services are `ClusterIP`. The single `istio-ingressgateway` Ingress creates one public application ALB.
 
 For a repeatable deployment from the EC2 administration host, see [`ansible/README.md`](ansible/README.md).
