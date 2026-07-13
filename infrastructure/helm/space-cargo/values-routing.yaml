@@ -9,23 +9,23 @@ global:
   imagePullPolicy: IfNotPresent
 services:
   routing-service:
-      image: depi-routing-service
-      tag: ""
-      replicas: 2
-      port: 8000
-      healthPath: /health
-      serviceAccount: routing-service
-      runAsUser: 10001
-      resources:
-        requests:
-          cpu: 50m
-          memory: 32Mi
-        limits:
-          cpu: 300m
-          memory: 128Mi
-      pdb:
-        enabled: true
-        minAvailable: 1
+    image: depi-routing-service
+    tag: "latest"
+    replicas: 2
+    port: 8000
+    healthPath: /health
+    serviceAccount: routing-service
+    runAsUser: 10001
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 300m
+        memory: 128Mi
+    pdb:
+      enabled: true
+      minAvailable: 1
 networkPolicy:
   enabled: false
 
