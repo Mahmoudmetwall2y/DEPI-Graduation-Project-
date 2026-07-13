@@ -352,12 +352,12 @@
           - --timeout
           - 10m
 
-    - name: Wait for application deployments
+    - name: Wait for application deployments to become available
       ansible.builtin.command:
         argv:
           - kubectl
-          - rollout
-          - status
+          - wait
+          - --for=condition=Available
           - deployment
           - --all
           - --namespace
