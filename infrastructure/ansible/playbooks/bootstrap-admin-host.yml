@@ -3,11 +3,14 @@
   hosts: eks_admin
   gather_facts: true
   become: false
+  vars_files:
+    - ../group_vars/all.yml
   vars:
     helm_archive: /tmp/helm-{{ helm_version }}-linux-amd64.tar.gz
     helm_extract_dir: /tmp/helm-{{ helm_version }}
     eksctl_archive: /tmp/eksctl_Linux_amd64.tar.gz
     eksctl_extract_dir: /tmp/eksctl
+    aws_cli_architecture: "{{ 'aarch64' if ansible_architecture in ['aarch64', 'arm64'] else 'x86_64' }}"
   tasks:
     - name: Require a Linux administration host
       ansible.builtin.assert:
@@ -18,7 +21,6 @@
     - name: Install operating-system prerequisites
       ansible.builtin.package:
         name:
-          - awscli
           - curl
           - git
           - gzip
@@ -27,6 +29,34 @@
           - unzip
         state: present
       become: true
+
+    # The AWS CLI package is not available in every minimal Ubuntu image.
+    # Install the supported AWS CLI v2 bundle so this playbook works consistently
+    # on Ubuntu and Amazon Linux administration hosts.
+    - name: Download AWS CLI v2
+      ansible.builtin.get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-{{ aws_cli_architecture }}.zip
+        dest: /tmp/awscliv2.zip
+        mode: "0644"
+
+    - name: Extract AWS CLI v2
+      ansible.builtin.unarchive:
+        src: /tmp/awscliv2.zip
+        dest: /tmp
+        remote_src: true
+        creates: /tmp/aws/install
+
+    - name: Install or update AWS CLI v2
+      ansible.builtin.command:
+        argv:
+          - /tmp/aws/install
+          - --bin-dir
+          - /usr/local/bin
+          - --install-dir
+          - /usr/local/aws-cli
+          - --update
+      become: true
+      changed_when: false
 
     - name: Install Docker when image publishing is requested
       ansible.builtin.package:

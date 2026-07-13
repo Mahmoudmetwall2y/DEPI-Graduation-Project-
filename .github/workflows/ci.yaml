@@ -49,8 +49,15 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r services/cargo-service/requirements.txt
           python -m pip install -r services/telemetry-service/requirements.txt
+          
           cd services/routing-service
           go test ./... -v
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Show Image Tag
+        run: 'echo "Building Docker images with tag: ${{ github.sha  }}"'
 
       - name: Log in to Docker Hub
         if: github.event_name == 'push'
@@ -66,7 +73,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha  }}
 
       - name: Build and optionally push cargo image
         uses: docker/build-push-action@v6
@@ -75,7 +82,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_NAMESPACE }}/${{ env.CARGO_IMAGE }}:latest
-            ${{ env.IMAGE_NAMESPACE }}/${{ env.CARGO_IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.CARGO_IMAGE }}:${{ github.sha  }}
 
       - name: Build and optionally push telemetry image
         uses: docker/build-push-action@v6
@@ -84,7 +91,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_NAMESPACE }}/${{ env.TELEMETRY_IMAGE }}:latest
-            ${{ env.IMAGE_NAMESPACE }}/${{ env.TELEMETRY_IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.TELEMETRY_IMAGE }}:${{ github.sha  }}
 
       - name: Build and optionally push routing image
         uses: docker/build-push-action@v6
@@ -93,7 +100,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_NAMESPACE }}/${{ env.ROUTING_IMAGE }}:latest
-            ${{ env.IMAGE_NAMESPACE }}/${{ env.ROUTING_IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.ROUTING_IMAGE }}:${{ github.sha  }}
 
   update-helm-values:
     name: Update Helm image tags
@@ -109,7 +116,7 @@ jobs:
 
       - name: Update image tags in Helm values
         env:
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           python3 - "$VALUES_PATH" "$IMAGE_TAG" <<'PY'
           import re
