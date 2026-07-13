@@ -10,7 +10,7 @@ global:
 services:
   cargo-service:
       image: depi-cargo-service
-      tag: "latest"
+      tag: ""
       replicas: 1
       port: 8000
       healthPath: /health
