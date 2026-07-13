@@ -143,11 +143,13 @@ jobs:
                   continue
                   
               content = values_path.read_text()
-              pattern = rf"(^  {re.escape(service)}:\n(?:    .*\n)*?    tag: ).*$"
+              
+              # الـ Regex المرن الجديد: بيبحث عن سطر الـ tag مباشرة مهما كان مكانه أو مسافاته جوه الملف المنفصل
+              pattern = r"(^\s+tag:\s*).*$"
               
               content, replacements = re.subn(
                   pattern,
-                  rf'\g<1>"{image_tag}"',
+                  f'\g<1>"{image_tag}"',
                   content,
                   flags=re.MULTILINE,
               )
@@ -158,6 +160,7 @@ jobs:
               else:
                   print(f"Warning: Could not update tag for {service} in {file_name}. Matches found: {replacements}")
           PY
+
 
       - name: Commit Helm image tags when changed
         run: |
