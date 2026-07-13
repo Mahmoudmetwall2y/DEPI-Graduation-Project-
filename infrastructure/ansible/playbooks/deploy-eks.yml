@@ -30,6 +30,23 @@
       register: aws_account
       changed_when: false
 
+    - name: Read the EKS cluster VPC ID
+      ansible.builtin.command:
+        argv:
+          - aws
+          - eks
+          - describe-cluster
+          - --name
+          - "{{ eks_cluster_name }}"
+          - --region
+          - "{{ aws_region }}"
+          - --query
+          - cluster.resourcesVpcConfig.vpcId
+          - --output
+          - text
+      register: eks_vpc_id
+      changed_when: false
+
     - name: Build and publish application images when requested
       ansible.builtin.include_tasks: tasks/publish-images.yml
       when: build_and_push_images | bool
@@ -152,6 +169,10 @@
           - kube-system
           - --set
           - clusterName={{ eks_cluster_name }}
+          - --set
+          - region={{ aws_region }}
+          - --set
+          - vpcId={{ eks_vpc_id.stdout }}
           - --set
           - serviceAccount.create=false
           - --set
