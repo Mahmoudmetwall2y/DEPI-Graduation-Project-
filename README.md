@@ -14,6 +14,7 @@ infrastructure/
   docker/                Local Docker Compose environment
   helm/space-cargo/      Kubernetes and Istio application Helm chart
   istio/                 AWS ALB gateway values and Ingress manifest
+  argocd/                Argo CD Application for GitOps delivery
 ```
 
 See [`infrastructure/README.md`](infrastructure/README.md) for deployment commands and prerequisites.

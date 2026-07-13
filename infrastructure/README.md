@@ -3,6 +3,7 @@
 - `docker/`: local multi-container development.
 - `helm/space-cargo/`: the authoritative Kubernetes application deployment, including Istio routing and security resources.
 - `istio/`: AWS ALB configuration for the official Istio ingress-gateway chart.
+- `argocd/`: the Argo CD Application that continuously deploys the Helm chart from `main`.
 - `ansible/`: repeatable EKS administration-host bootstrap and deployment playbooks.
 
 The Helm chart is the single application deployment source for CI/CD and Argo CD.
@@ -52,3 +53,18 @@ The standard EKS cluster must have the AWS Load Balancer Controller and Amazon V
 The Istio gateway and all application Services are `ClusterIP`. The single `istio-ingressgateway` Ingress creates one public application ALB.
 
 For a repeatable deployment from the EC2 administration host, see [`ansible/README.md`](ansible/README.md).
+
+## GitOps delivery
+
+GitHub Actions tests the services, builds and pushes Docker Hub images tagged with the immutable commit SHA, then commits that SHA to this chart's `values.yaml`. The push that updates `values.yaml` does not retrigger the image build workflow.
+
+Argo CD watches the `main` branch and automatically synchronizes the chart whenever that committed image tag changes. Install Argo CD once, then register the Application:
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side --force-conflicts \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -f infrastructure/argocd/space-cargo-application.yaml
+```
+
+After Argo CD takes ownership of `space-cargo`, use GitHub Actions and Argo CD for application changes. Keep Ansible for the EKS platform components: AWS Load Balancer Controller, Metrics Server, and Istio.

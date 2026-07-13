@@ -116,7 +116,7 @@ jobs:
 
       - name: Update image tags in Helm values
         env:
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           python3 - "$VALUES_PATH" "$IMAGE_TAG" <<'PY'
           import re
@@ -125,6 +125,8 @@ jobs:
 
           values_path = Path(sys.argv[1])
           image_tag = sys.argv[2]
+          if not image_tag:
+              raise SystemExit("IMAGE_TAG must not be empty")
           services = [
               "frontend",
               "cargo-service",
