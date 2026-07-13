@@ -11,7 +11,7 @@ spec:
     path: infrastructure/helm/space-cargo
     helm:
       valueFiles:
-        - values-telemetry-cargo.yaml
+        - values-telemetry.yaml
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: space-cargo
