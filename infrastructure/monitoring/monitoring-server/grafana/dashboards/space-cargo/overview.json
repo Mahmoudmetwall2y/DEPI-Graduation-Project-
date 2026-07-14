@@ -1,11 +1,11 @@
 {
   "uid": "space-cargo-overview",
   "title": "Space Cargo | EKS Operations Center",
-  "description": "Operational health, application performance, autoscaling, and worker-node capacity for the Space Cargo platform.",
+  "description": "Operational health, application performance, resilience tests, autoscaling, service-mesh traffic, and worker-node capacity for the Space Cargo platform.",
   "tags": ["space-cargo", "eks", "istio", "devops", "observability"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "15s",
   "time": { "from": "now-6h", "to": "now" },
   "graphTooltip": 1,
@@ -156,6 +156,72 @@
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 }] }, "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
       "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 26 }
+    },
+    {
+      "id": 14,
+      "type": "row",
+      "title": "Resilience and service-mesh tests",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 }
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Cargo 5xx Responses (last 5m)",
+      "description": "Turns red when the Cargo error simulation produces HTTP 5xx responses. The value naturally returns to zero five minutes after the test stops.",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "sum(increase(cargo_http_requests_total{status=~\"5..\"}[5m])) or vector(0)", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "orientation": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 36 }
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "mTLS Mesh Request Rate",
+      "description": "Requests received by Space Cargo workloads through Istio with mutual TLS enabled.",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "sum(rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"space-cargo\",connection_security_policy=\"mutual_tls\"}[5m])) or vector(0)", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 0.01 }] },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "orientation": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 36 }
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Istio HTTP Responses by Status",
+      "description": "Shows successful and failed requests observed by the service mesh. Use it with the Cargo error simulation to demonstrate resilience behaviour.",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "sum by (response_code) (rate(istio_requests_total{reporter=\"destination\",destination_workload_namespace=\"space-cargo\"}[5m]))", "legendFormat": "HTTP {{response_code}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0, "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 }
+    },
+    {
+      "id": 18,
+      "type": "text",
+      "title": "Demo map: application test to dashboard signal",
+      "datasource": "Prometheus",
+      "options": {
+        "mode": "markdown",
+        "content": "- **Normal API calls:** Request Rate by Service and Istio HTTP Responses change.\n- **Latency simulation:** Cargo p95 Service Latency rises.\n- **Error simulation:** Cargo 5xx Responses and the HTTP 5xx line rise.\n- **Telemetry load simulation:** Active load simulations, HPA replicas, and worker CPU usage rise.\n- **Pod or metric failure:** Backend Metric Targets Up, Ready Application Pods, Pending Pods, and Backend Availability change."
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 44 }
     }
   ]
 }
