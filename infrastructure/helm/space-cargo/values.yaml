@@ -43,6 +43,10 @@ services:
     port: 8000
     healthPath: /health
     serviceAccount: cargo-service
+    metrics:
+      enabled: true
+      path: /metrics
+      port: 8000
     runAsUser: 10001
     env:
       TELEMETRY_SERVICE_URL: http://telemetry-service:8000
@@ -64,6 +68,10 @@ services:
     port: 8000
     healthPath: /health
     serviceAccount: telemetry-service
+    metrics:
+      enabled: true
+      path: /metrics
+      port: 8000
     runAsUser: 10001
     resources:
       requests:
@@ -88,6 +96,10 @@ services:
     port: 8000
     healthPath: /health
     serviceAccount: routing-service
+    metrics:
+      enabled: true
+      path: /metrics
+      port: 8000
     runAsUser: 10001
     resources:
       requests:
