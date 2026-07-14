@@ -2,6 +2,7 @@
 {{- $ingressPrincipal := printf "%s/ns/%s/sa/%s" .Values.istio.trustDomain .Values.istio.ingressGateway.namespace .Values.istio.ingressGateway.serviceAccount }}
 {{- $frontendPrincipal := printf "%s/ns/%s/sa/frontend" .Values.istio.trustDomain .Release.Namespace }}
 {{- $cargoPrincipal := printf "%s/ns/%s/sa/cargo-service" .Values.istio.trustDomain .Release.Namespace }}
+{{- $monitoringPrincipal := printf "%s/ns/%s/sa/%s" .Values.istio.trustDomain .Values.monitoring.prometheusServer.namespace .Values.monitoring.prometheusServer.serviceAccount }}
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
@@ -88,4 +89,25 @@ spec:
         - operation:
             ports:
               - "8000"
+{{- if .Values.monitoring.prometheusServer.enabled }}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-server-metrics
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: space-cargo
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - {{ $monitoringPrincipal | quote }}
+      to:
+        - operation:
+            ports:
+              - "8000"
+{{- end }}
 {{- end }}

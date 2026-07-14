@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: Space Cargo
+    orgId: 1
+    folder: Space Cargo
+    folderUid: space-cargo
+    type: file
+    disableDeletion: true
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards/space-cargo
