@@ -70,6 +70,12 @@ def health_check():
 def get_metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+@app.get("/api/telemetry/load-status")
+def get_load_status():
+    return {
+        "load_simulation_active": active_load_threads > 0,
+        "active_simulation_threads": active_load_threads
+    }
 @app.get("/api/telemetry/{cargo_id}")
 def get_telemetry(cargo_id: str):
     TELEMETRY_REQUESTS_TOTAL.labels(cargo_id=cargo_id).inc()
@@ -112,9 +118,3 @@ def trigger_load_simulation(request: LoadSimulationRequest):
         "active_simulations": active_load_threads + cores
     }
 
-@app.get("/api/telemetry/load-status")
-def get_load_status():
-    return {
-        "load_simulation_active": active_load_threads > 0,
-        "active_simulation_threads": active_load_threads
-    }

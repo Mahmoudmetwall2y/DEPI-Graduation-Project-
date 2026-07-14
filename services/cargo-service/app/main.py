@@ -120,6 +120,20 @@ def create_cargo(item: CargoItem):
     CARGO_CREATED_TOTAL.inc()
     return cargo
 
+@app.get("/api/cargo/error-rate")
+def get_error_rate():
+    return {"error_rate": error_rate}
+
+@app.get("/api/cargo/latency-status")
+def get_routing_latency_status():
+    try:
+        res = requests.get(f"{ROUTING_SERVICE_URL}/api/routing/latency-status", timeout=2.0)
+        if res.status_code == 200:
+            return res.json()
+        return {"latency_ms": 0, "error": f"Routing service returned non-200: {res.status_code}"}
+    except Exception as err:
+        return {"latency_ms": 0, "error": f"Failed to fetch routing service latency: {str(err)}"}
+
 @app.get("/api/cargo/{cargo_id}")
 def get_cargo_details(cargo_id: str):
     # Find cargo
@@ -165,10 +179,6 @@ def configure_errors(config: ErrorConfig):
     error_rate = max(0.0, min(1.0, config.rate))
     return {"message": f"Error simulation rate set to {error_rate * 100}%"}
 
-@app.get("/api/cargo/error-rate")
-def get_error_rate():
-    return {"error_rate": error_rate}
-
 # Proxy latency configuration to the Go routing service
 @app.post("/api/cargo/simulate-latency")
 def configure_routing_latency(config: LatencyConfig):
@@ -184,15 +194,3 @@ def configure_routing_latency(config: LatencyConfig):
             raise HTTPException(status_code=res.status_code, detail=res.text)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to configure routing service latency: {str(e)}")
-
-# Proxy latency status from the Go routing service
-@app.get("/api/cargo/latency-status")
-def get_routing_latency_status():
-    try:
-        res = requests.get(f"{ROUTING_SERVICE_URL}/api/routing/latency-status", timeout=2.0)
-        if res.status_code == 200:
-            return res.json()
-        else:
-            return {"latency_ms": 0, "error": f"Routing service returned non-200: {res.status_code}"}
-    except Exception as e:
-        return {"latency_ms": 0, "error": f"Failed to fetch routing service latency: {str(e)}"}
