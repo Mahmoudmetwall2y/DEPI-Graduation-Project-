@@ -28,7 +28,7 @@ The repository is intentionally designed as both an application and a DevOps dem
 
 ```text
                               ┌──────────────────────────────────────┐
-Internet ──► AWS ALB ────────►│ Istio Ingress Gateway                 │
+Internet ──► AWS ALB ────────►│ Istio Ingress Gateway                │
                               │                                      │
                               │  Istio Gateway + VirtualService      │
                               └──────────────┬───────────────────────┘
