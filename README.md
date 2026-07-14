@@ -21,7 +21,7 @@ infrastructure/
 
 See [`infrastructure/README.md`](infrastructure/README.md) for deployment commands and prerequisites.
 
-See [`docs/DEVOPS_PRESENTATION_GUIDE.md`](docs/DEVOPS_PRESENTATION_GUIDE.md) for a detailed, file-by-file explanation of the complete DevOps layer.
+See [`docs/PROJECT_DOCUMENTATION.md`](docs/PROJECT_DOCUMENTATION.md) for architecture, operations, security, and delivery documentation. The [`docs/DEVOPS_PRESENTATION_GUIDE.md`](docs/DEVOPS_PRESENTATION_GUIDE.md) provides a detailed file-by-file presentation reference.
 
 ## Architecture notes
 
