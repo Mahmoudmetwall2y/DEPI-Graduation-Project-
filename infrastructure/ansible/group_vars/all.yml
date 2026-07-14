@@ -1,0 +1,29 @@
+# Copy this file to group_vars/all.yml and set the values for your EKS cluster.
+eks_cluster_name: EKS-Cluster
+aws_region: eu-central-1
+
+# Keep kubectl within one minor version of the EKS control plane.
+kubectl_version: v1.35.3
+helm_version: v3.18.4
+istio_version: 1.30.2
+aws_load_balancer_controller_chart_version: 1.14.0
+
+# Compact Istio control-plane profile for the two-node t3.small demonstration cluster.
+# For production, restore the Istio defaults or size the worker nodes for a larger profile.
+istiod_resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# Set to true only when this EC2 host is responsible for building first-release images.
+# The Docker Hub token is read from the DOCKERHUB_TOKEN environment variable.
+build_and_push_images: false
+dockerhub_username: mahmoudmetwall2y
+image_tag: "0.1.0"
+
+# Standard EKS requires the AWS Load Balancer Controller.
+install_aws_load_balancer_controller: true
+

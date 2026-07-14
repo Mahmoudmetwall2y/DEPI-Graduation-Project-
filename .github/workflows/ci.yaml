@@ -1,0 +1,163 @@
+name: Space Cargo CI/CD GitOps Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "services/**"
+      - ".github/workflows/ci.yaml"
+  pull_request:
+    paths:
+      - "services/**"
+      - "infrastructure/helm/**"
+      - ".github/workflows/ci.yaml"
+
+permissions:
+  contents: write
+
+env:
+  FRONTEND_IMAGE: depi-frontend
+  CARGO_IMAGE: depi-cargo-service
+  TELEMETRY_IMAGE: depi-telemetry-service
+  ROUTING_IMAGE: depi-routing-service
+  VALUES_PATH: infrastructure/helm/space-cargo/values.yaml
+
+jobs:
+  test-and-build:
+    name: Test and build application images
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAMESPACE: ${{ github.event_name == 'push' && secrets.DOCKERHUB_USERNAME || 'local' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.5"
+
+      - name: Test Python and Go services
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r services/cargo-service/requirements.txt
+          python -m pip install -r services/telemetry-service/requirements.txt
+          
+          cd services/routing-service
+          go test ./... -v
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Show Image Tag
+        run: 'echo "Building Docker images with tag: ${{ github.sha  }}"'
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and optionally push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/frontend
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha  }}
+
+      - name: Build and optionally push cargo image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/cargo-service
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.CARGO_IMAGE }}:latest
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.CARGO_IMAGE }}:${{ github.sha  }}
+
+      - name: Build and optionally push telemetry image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/telemetry-service
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.TELEMETRY_IMAGE }}:latest
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.TELEMETRY_IMAGE }}:${{ github.sha  }}
+
+      - name: Build and optionally push routing image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/routing-service
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.ROUTING_IMAGE }}:latest
+            ${{ env.IMAGE_NAMESPACE }}/${{ env.ROUTING_IMAGE }}:${{ github.sha  }}
+
+  update-helm-values:
+    name: Update Helm image tags
+    needs: test-and-build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update image tags in Helm values
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          python3 - "$VALUES_PATH" "$IMAGE_TAG" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          values_path = Path(sys.argv[1])
+          image_tag = sys.argv[2]
+          if not image_tag:
+              raise SystemExit("IMAGE_TAG must not be empty")
+          services = [
+              "frontend",
+              "cargo-service",
+              "telemetry-service",
+              "routing-service",
+          ]
+          content = values_path.read_text()
+
+          for service in services:
+              pattern = rf"(^  {re.escape(service)}:\n(?:    .*\n)*?    tag: ).*$"
+              content, replacements = re.subn(
+                  pattern,
+                  rf'\g<1>"{image_tag}"',
+                  content,
+                  flags=re.MULTILINE,
+              )
+              if replacements != 1:
+                  raise SystemExit(f"Expected exactly one tag for {service}, found {replacements}")
+
+          values_path.write_text(content)
+          PY
+
+      - name: Commit Helm image tags when changed
+        run: |
+          if git diff --quiet -- "$VALUES_PATH"; then
+            echo "Helm image tags are already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$VALUES_PATH"
+          git commit -m "chore(gitops): update images to $GITHUB_SHA"
+          git push origin HEAD:main

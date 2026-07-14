@@ -1,0 +1,28 @@
+# Values for the official Istio gateway Helm chart on Amazon EKS.
+# Public exposure is provided by aws-alb-ingress.yaml; this Service stays internal.
+service:
+  type: ClusterIP
+  ports:
+    - name: http2
+      port: 80
+      protocol: TCP
+      targetPort: 80
+
+serviceAccount:
+  create: true
+  name: istio-ingressgateway
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi

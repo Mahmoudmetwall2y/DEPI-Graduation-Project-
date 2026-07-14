@@ -1,0 +1,50 @@
+---
+- name: Require a Docker Hub token when publishing images
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.env', 'DOCKERHUB_TOKEN') | length > 0
+    fail_msg: Export DOCKERHUB_TOKEN before running with build_and_push_images=true.
+  no_log: true
+
+- name: Log in to Docker Hub
+  ansible.builtin.shell: |
+    set -o pipefail
+    printf '%s' "$DOCKERHUB_TOKEN" | docker login --username {{ dockerhub_username }} --password-stdin
+  args:
+    executable: /bin/bash
+  environment:
+    DOCKERHUB_TOKEN: "{{ lookup('ansible.builtin.env', 'DOCKERHUB_TOKEN') }}"
+  no_log: true
+  changed_when: false
+
+- name: Build application images
+  ansible.builtin.command:
+    argv:
+      - docker
+      - build
+      - --pull
+      - --tag
+      - "{{ dockerhub_username }}/{{ item.image }}:{{ image_tag }}"
+      - "{{ project_root }}/{{ item.context }}"
+  loop:
+    - image: depi-frontend
+      context: services/frontend
+    - image: depi-cargo-service
+      context: services/cargo-service
+    - image: depi-telemetry-service
+      context: services/telemetry-service
+    - image: depi-routing-service
+      context: services/routing-service
+
+- name: Push application images
+  ansible.builtin.command:
+    argv:
+      - docker
+      - push
+      - "{{ dockerhub_username }}/{{ item }}:{{ image_tag }}"
+  loop:
+    - depi-frontend
+    - depi-cargo-service
+    - depi-telemetry-service
+    - depi-routing-service
+

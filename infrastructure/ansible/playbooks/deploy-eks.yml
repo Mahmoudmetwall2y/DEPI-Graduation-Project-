@@ -1,0 +1,377 @@
+---
+- name: Install EKS platform components and the Space Cargo application
+  hosts: eks_admin
+  gather_facts: false
+  become: false
+  vars_files:
+    - ../group_vars/all.yml
+  vars:
+    project_root: "{{ playbook_dir }}/../../.."
+    lbc_policy_file: /tmp/aws-load-balancer-controller-iam-policy.json
+  tasks:
+    - name: Verify Kubernetes access
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - nodes
+      changed_when: false
+
+    - name: Read the current AWS account ID
+      ansible.builtin.command:
+        argv:
+          - aws
+          - sts
+          - get-caller-identity
+          - --query
+          - Account
+          - --output
+          - text
+      register: aws_account
+      changed_when: false
+
+    - name: Read the EKS cluster VPC ID
+      ansible.builtin.command:
+        argv:
+          - aws
+          - eks
+          - describe-cluster
+          - --name
+          - "{{ eks_cluster_name }}"
+          - --region
+          - "{{ aws_region }}"
+          - --query
+          - cluster.resourcesVpcConfig.vpcId
+          - --output
+          - text
+      register: eks_vpc_id
+      changed_when: false
+
+    - name: Build and publish application images when requested
+      ansible.builtin.include_tasks: tasks/publish-images.yml
+      when: build_and_push_images | bool
+
+    - name: Download AWS Load Balancer Controller IAM policy
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.14.1/docs/install/iam_policy.json
+        dest: "{{ lbc_policy_file }}"
+        mode: "0600"
+      when: install_aws_load_balancer_controller | bool
+
+    - name: Check whether the AWS Load Balancer Controller IAM policy exists
+      ansible.builtin.command:
+        argv:
+          - aws
+          - iam
+          - get-policy
+          - --policy-arn
+          - arn:aws:iam::{{ aws_account.stdout }}:policy/AWSLoadBalancerControllerIAMPolicy
+      register: lbc_policy
+      changed_when: false
+      failed_when: false
+      when: install_aws_load_balancer_controller | bool
+
+    - name: Create the AWS Load Balancer Controller IAM policy when absent
+      ansible.builtin.command:
+        argv:
+          - aws
+          - iam
+          - create-policy
+          - --policy-name
+          - AWSLoadBalancerControllerIAMPolicy
+          - --policy-document
+          - file://{{ lbc_policy_file }}
+      when:
+        - install_aws_load_balancer_controller | bool
+        - lbc_policy is defined
+        - lbc_policy.rc != 0
+
+    - name: Associate the EKS OIDC provider
+      ansible.builtin.command:
+        argv:
+          - eksctl
+          - utils
+          - associate-iam-oidc-provider
+          - --cluster
+          - "{{ eks_cluster_name }}"
+          - --region
+          - "{{ aws_region }}"
+          - --approve
+      changed_when: false
+      when: install_aws_load_balancer_controller | bool
+
+    - name: Create or update the AWS Load Balancer Controller service account
+      ansible.builtin.command:
+        argv:
+          - eksctl
+          - create
+          - iamserviceaccount
+          - --cluster
+          - "{{ eks_cluster_name }}"
+          - --region
+          - "{{ aws_region }}"
+          - --namespace
+          - kube-system
+          - --name
+          - aws-load-balancer-controller
+          - --attach-policy-arn
+          - arn:aws:iam::{{ aws_account.stdout }}:policy/AWSLoadBalancerControllerIAMPolicy
+          - --override-existing-serviceaccounts
+          - --approve
+      when: install_aws_load_balancer_controller | bool
+
+    - name: Add the AWS EKS Helm repository
+      ansible.builtin.command:
+        argv:
+          - helm
+          - repo
+          - add
+          - eks
+          - https://aws.github.io/eks-charts
+          - --force-update
+      changed_when: false
+      when: install_aws_load_balancer_controller | bool
+
+    - name: Add the Istio Helm repository
+      ansible.builtin.command:
+        argv:
+          - helm
+          - repo
+          - add
+          - istio
+          - https://istio-release.storage.googleapis.com/charts
+          - --force-update
+      changed_when: false
+
+    - name: Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: Install Metrics Server
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -f
+          - https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+      register: metrics_server
+      changed_when: "'created' in metrics_server.stdout or 'configured' in metrics_server.stdout"
+
+    - name: Install AWS Load Balancer Controller
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - aws-load-balancer-controller
+          - eks/aws-load-balancer-controller
+          - --namespace
+          - kube-system
+          - --set
+          - clusterName={{ eks_cluster_name }}
+          - --set
+          - region={{ aws_region }}
+          - --set
+          - vpcId={{ eks_vpc_id.stdout }}
+          - --set
+          - serviceAccount.create=false
+          - --set
+          - serviceAccount.name=aws-load-balancer-controller
+          - --version
+          - "{{ aws_load_balancer_controller_chart_version }}"
+          - --wait
+      when: install_aws_load_balancer_controller | bool
+
+    - name: Create the Istio system namespace
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - create
+          - namespace
+          - istio-system
+      register: istio_namespace
+      changed_when: istio_namespace.rc == 0
+      failed_when: istio_namespace.rc not in [0, 1]
+
+    - name: Allow Istio CNI privileged pods in the Istio namespace
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - label
+          - namespace
+          - istio-system
+          - pod-security.kubernetes.io/enforce=privileged
+          - pod-security.kubernetes.io/enforce-version=latest
+          - --overwrite
+      changed_when: false
+
+    - name: Install Istio base CRDs
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - istio-base
+          - istio/base
+          - --namespace
+          - istio-system
+          - --version
+          - "{{ istio_version }}"
+          - --wait
+
+    - name: Install Istio CNI
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - istio-cni
+          - istio/cni
+          - --namespace
+          - istio-system
+          - --version
+          - "{{ istio_version }}"
+          - --wait
+
+    - name: Install Istio control plane
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - istiod
+          - istio/istiod
+          - --namespace
+          - istio-system
+          - --version
+          - "{{ istio_version }}"
+          - --set
+          - pilot.cni.enabled=true
+          - --set
+          - pilot.resources.requests.cpu={{ istiod_resources.requests.cpu }}
+          - --set
+          - pilot.resources.requests.memory={{ istiod_resources.requests.memory }}
+          - --set
+          - pilot.resources.limits.cpu={{ istiod_resources.limits.cpu }}
+          - --set
+          - pilot.resources.limits.memory={{ istiod_resources.limits.memory }}
+          - --wait
+
+    - name: Read the existing Istio ingress gateway Service type
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - service
+          - istio-ingressgateway
+          - --namespace
+          - istio-system
+          - --output
+          - jsonpath={.spec.type}
+      register: istio_gateway_service_type
+      changed_when: false
+      failed_when: false
+
+    - name: Remove the legacy NLB Service before migrating to ALB
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - delete
+          - service
+          - istio-ingressgateway
+          - --namespace
+          - istio-system
+      when: istio_gateway_service_type.stdout | trim == 'LoadBalancer'
+
+    - name: Install the ClusterIP Istio ingress gateway for ALB
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - istio-ingressgateway
+          - istio/gateway
+          - --namespace
+          - istio-system
+          - --version
+          - "{{ istio_version }}"
+          - --values
+          - "{{ project_root }}/infrastructure/istio/aws-alb-gateway-values.yaml"
+          - --wait
+          - --timeout
+          - 10m
+
+    - name: Create the AWS ALB Ingress for the Istio gateway
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - --filename
+          - "{{ project_root }}/infrastructure/istio/aws-alb-ingress.yaml"
+      register: istio_alb_ingress
+      changed_when: "'created' in istio_alb_ingress.stdout or 'configured' in istio_alb_ingress.stdout"
+
+    - name: Create the application namespace
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - create
+          - namespace
+          - space-cargo
+      register: application_namespace
+      changed_when: application_namespace.rc == 0
+      failed_when: application_namespace.rc not in [0, 1]
+
+    - name: Enable Istio injection and restricted Pod Security
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - label
+          - namespace
+          - space-cargo
+          - istio-injection=enabled
+          - pod-security.kubernetes.io/enforce=restricted
+          - pod-security.kubernetes.io/enforce-version=latest
+          - pod-security.kubernetes.io/audit=restricted
+          - pod-security.kubernetes.io/warn=restricted
+          - --overwrite
+      changed_when: false
+
+    - name: Install the Space Cargo application chart
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - space-cargo
+          - "{{ project_root }}/infrastructure/helm/space-cargo"
+          - --namespace
+          - space-cargo
+          - --atomic
+          - --wait
+          - --timeout
+          - 10m
+
+    - name: Wait for application deployments to become available
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - wait
+          - --for=condition=Available
+          - deployment
+          - --all
+          - --namespace
+          - space-cargo
+          - --timeout=10m
+      changed_when: false
+
+    - name: Show the AWS ALB Ingress
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - ingress
+          - istio-ingressgateway
+          - --namespace
+          - istio-system
+      changed_when: false

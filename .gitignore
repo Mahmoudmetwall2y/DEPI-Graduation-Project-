@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.idea/
+.vscode/
+*.log
+.DS_Store
+# Terraform generated state and local working files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan

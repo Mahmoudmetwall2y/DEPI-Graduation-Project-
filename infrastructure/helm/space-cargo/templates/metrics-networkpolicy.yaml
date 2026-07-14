@@ -1,0 +1,21 @@
+{{- if and .Values.networkPolicy.enabled .Values.monitoring.prometheusServer.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-server-metrics
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.monitoring.prometheusServer.namespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ .Values.monitoring.prometheusServer.serviceAccount | quote }}
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- end }}
