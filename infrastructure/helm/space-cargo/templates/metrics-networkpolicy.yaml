@@ -17,6 +17,5 @@ spec:
               app.kubernetes.io/name: {{ .Values.monitoring.prometheusServer.serviceAccount | quote }}
       ports:
         - protocol: TCP
-          # Istio merges each application's metrics into the sidecar endpoint.
-          port: 15020
+          port: 8000
 {{- end }}
