@@ -124,9 +124,27 @@ resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
   ip_protocol       = "tcp"
   to_port           = 22
 }
-
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic" {
   security_group_id = aws_security_group.allow_tls.id
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
+}
+resource "aws_security_group" "eks_cluster_sg" {
+  name   = "eks-cluster-sg"
+  vpc_id = aws_vpc.vpc.id
+}
+resource "aws_vpc_security_group_ingress_rule" "eks_api_from_manager" {
+  security_group_id = aws_security_group.eks_cluster_sg.id
+
+  referenced_security_group_id = aws_security_group.allow_tls.id
+
+  ip_protocol = "tcp"
+  from_port   = 443
+  to_port     = 443
+}
+resource "aws_vpc_security_group_egress_rule" "eks_cluster_egress" {
+  security_group_id = aws_security_group.eks_cluster_sg.id
+
+  cidr_ipv4  = "0.0.0.0/0"
+  ip_protocol = "-1"
 }

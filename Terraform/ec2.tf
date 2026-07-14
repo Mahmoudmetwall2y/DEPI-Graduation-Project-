@@ -15,7 +15,7 @@ resource "aws_eks_access_policy_association" "manager_admin" {
 
 
 resource "aws_instance" "management_server" {
-  ami           = "ami-02167eae61967e403"
+  ami           = "ami-096f5760b00bcd95c"
   instance_type = "t3.micro"
   
   iam_instance_profile = aws_iam_instance_profile.ec2_manager_profile.name
