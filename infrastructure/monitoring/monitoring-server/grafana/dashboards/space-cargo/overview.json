@@ -1,96 +1,161 @@
 {
   "uid": "space-cargo-overview",
-  "title": "Space Cargo - EKS Overview",
-  "tags": ["space-cargo", "eks", "devops"],
+  "title": "Space Cargo | EKS Operations Center",
+  "description": "Operational health, application performance, autoscaling, and worker-node capacity for the Space Cargo platform.",
+  "tags": ["space-cargo", "eks", "istio", "devops", "observability"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
-  "refresh": "30s",
-  "time": { "from": "now-1h", "to": "now" },
+  "version": 2,
+  "refresh": "15s",
+  "time": { "from": "now-6h", "to": "now" },
+  "graphTooltip": 1,
   "panels": [
     {
       "id": 1,
-      "type": "stat",
-      "title": "Application Services Up",
-      "datasource": "Prometheus",
-      "targets": [{ "expr": "sum(up{job=\"space-cargo-services\",service=~\".+\"})", "refId": "A" }],
-      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 3 }] } }, "overrides": [] },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "orientation": "auto", "colorMode": "value", "graphMode": "none", "justifyMode": "auto" },
-      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 0 }
+      "type": "row",
+      "title": "Platform health",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
     },
     {
       "id": 2,
       "type": "stat",
-      "title": "Running Pods",
+      "title": "Backend Metric Targets Up",
+      "description": "Ready Cargo, Telemetry, and Routing pods successfully scraped by Prometheus.",
       "datasource": "Prometheus",
-      "targets": [{ "expr": "sum(kube_pod_status_phase{phase=\"Running\"})", "refId": "A" }],
-      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" } }, "overrides": [] },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "colorMode": "value", "graphMode": "none" },
-      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 0 }
+      "targets": [{ "expr": "sum(up{job=\"space-cargo-services\"})", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 3 }] },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "orientation": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 }
     },
     {
       "id": 3,
       "type": "stat",
-      "title": "Pending Pods",
+      "title": "Ready Application Pods",
+      "description": "Ready pods in the space-cargo namespace.",
       "datasource": "Prometheus",
-      "targets": [{ "expr": "sum(kube_pod_status_phase{phase=\"Pending\"})", "refId": "A" }],
-      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }, "overrides": [] },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "colorMode": "value", "graphMode": "none" },
-      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 0 }
+      "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"space-cargo\",condition=\"true\"})", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }, "decimals": 0 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "orientation": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 }
     },
     {
       "id": 4,
       "type": "stat",
-      "title": "Telemetry HPA Replicas",
+      "title": "Pending Pods",
+      "description": "Pods waiting for scheduling or startup. Any non-zero value needs investigation.",
       "datasource": "Prometheus",
-      "targets": [{ "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"space-cargo\",horizontalpodautoscaler=\"telemetry-service\"}", "refId": "A" }],
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "colorMode": "value", "graphMode": "none" },
-      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 0 }
+      "targets": [{ "expr": "sum(kube_pod_status_phase{namespace=\"space-cargo\",phase=\"Pending\"})", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }, "decimals": 0 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "orientation": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 }
     },
     {
       "id": 5,
-      "type": "timeseries",
-      "title": "Node CPU Usage",
+      "type": "stat",
+      "title": "Telemetry HPA Replicas",
+      "description": "Current replicas selected by the Telemetry horizontal pod autoscaler.",
       "datasource": "Prometheus",
-      "targets": [{ "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[5m])) * 100)", "legendFormat": "{{instance}}", "refId": "A" }],
-      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 7 }
+      "targets": [{ "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"space-cargo\",horizontalpodautoscaler=\"telemetry-service\"}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 4 }, { "color": "red", "value": 6 }] }, "decimals": 0 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false, "fields": "" }, "orientation": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 }
     },
     {
       "id": 6,
-      "type": "timeseries",
-      "title": "Node Memory Usage",
-      "datasource": "Prometheus",
-      "targets": [{ "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})", "legendFormat": "{{instance}}", "refId": "A" }],
-      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 7 }
+      "type": "row",
+      "title": "Application performance",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 }
     },
     {
       "id": 7,
       "type": "timeseries",
-      "title": "Service Request Rate",
+      "title": "Request Rate by Service",
+      "description": "Requests per second from application instrumentation.",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "sum(rate(cargo_http_requests_total[5m]))", "legendFormat": "cargo", "refId": "A" },
-        { "expr": "sum(rate(routing_requests_total[5m]))", "legendFormat": "routing", "refId": "B" },
-        { "expr": "sum(rate(telemetry_requests_total[5m]))", "legendFormat": "telemetry", "refId": "C" }
+        { "expr": "sum(rate(cargo_http_requests_total[5m]))", "legendFormat": "Cargo", "refId": "A" },
+        { "expr": "sum(rate(routing_requests_total[5m]))", "legendFormat": "Routing", "refId": "B" },
+        { "expr": "sum(rate(telemetry_requests_total[5m]))", "legendFormat": "Telemetry", "refId": "C" }
       ],
-      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 16 }
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 12, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 }
     },
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Telemetry Load Simulations",
+      "title": "p95 Service Latency",
+      "description": "95th-percentile request latency from Cargo and Routing histograms.",
       "datasource": "Prometheus",
-      "targets": [{ "expr": "max(telemetry_load_simulations_active)", "legendFormat": "active simulations", "refId": "A" }],
-      "fieldConfig": { "defaults": { "min": 0 }, "overrides": [] },
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 16 }
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(cargo_request_latency_seconds_bucket[5m])))", "legendFormat": "Cargo", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(routing_duration_seconds_bucket[5m])))", "legendFormat": "Routing", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 12, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Backend Availability",
+      "description": "Percentage of ready backend pod metric targets that Prometheus can scrape.",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "100 * avg by (service) (up{job=\"space-cargo-services\"})", "legendFormat": "{{service}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 90 }, { "color": "green", "value": 100 }] }, "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "lineWidth": 2, "fillOpacity": 8, "showPoints": "never", "spanNulls": false } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Telemetry Load and Autoscaling",
+      "description": "Controlled CPU-load simulations compared with HPA replica decisions.",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(telemetry_load_simulations_active)", "legendFormat": "Active load simulations", "refId": "A" },
+        { "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"space-cargo\",horizontalpodautoscaler=\"telemetry-service\"}", "legendFormat": "Current replicas", "refId": "B" },
+        { "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"space-cargo\",horizontalpodautoscaler=\"telemetry-service\"}", "legendFormat": "Desired replicas", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "min": 0, "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 }
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "EKS worker-node capacity",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Worker Node CPU Usage",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[5m])) * 100)", "legendFormat": "{{instance}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] }, "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 26 }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Worker Node Memory Usage",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})", "legendFormat": "{{instance}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 }] }, "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 26 }
     }
   ]
 }
