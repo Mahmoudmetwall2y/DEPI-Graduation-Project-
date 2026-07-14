@@ -1,11 +1,15 @@
 # Infrastructure
 
 - `docker/`: local multi-container development.
+- `terraform/`: AWS VPC, private EKS cluster, IAM roles, and EKS administration-host definitions.
+- `ansible/`: repeatable EKS administration-host bootstrap and deployment playbooks.
 - `helm/space-cargo/`: the authoritative Kubernetes application deployment, including Istio routing and security resources.
 - `istio/`: AWS ALB configuration for the official Istio ingress-gateway chart.
-- `ansible/`: repeatable EKS administration-host bootstrap and deployment playbooks.
+- `monitoring/`: in-cluster Prometheus collection plus central Prometheus and Grafana configuration for the monitoring server.
 
 The Helm chart is the single application deployment source for CI/CD and Argo CD.
+
+Terraform is run from `infrastructure/terraform/`. It creates the AWS foundation only; application deployment remains the responsibility of Ansible, Helm, and eventually Argo CD.
 
 Container images are configured under the `docker.io/mahmoudmetwall2y` Docker Hub namespace.
 

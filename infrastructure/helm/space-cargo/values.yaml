@@ -103,6 +103,12 @@ services:
 networkPolicy:
   enabled: true
 
+monitoring:
+  prometheusServer:
+    enabled: true
+    namespace: monitoring-agent
+    serviceAccount: prometheus-server
+
 istio:
   enabled: true
   trustDomain: cluster.local

@@ -11,9 +11,12 @@ services/
   telemetry-service/     Python/FastAPI telemetry and load API
   routing-service/       Go routing and latency API
 infrastructure/
+  terraform/              AWS VPC, EKS, IAM, and administration-host definitions
+  ansible/                Repeatable EKS administration and deployment playbooks
   docker/                Local Docker Compose environment
   helm/space-cargo/      Kubernetes and Istio application Helm chart
   istio/                 AWS ALB gateway values and Ingress manifest
+  monitoring/            In-cluster Prometheus and monitoring-server configuration
 ```
 
 See [`infrastructure/README.md`](infrastructure/README.md) for deployment commands and prerequisites.
