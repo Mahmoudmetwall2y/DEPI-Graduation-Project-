@@ -13,9 +13,8 @@ worker-node security group because this is the private remote-write endpoint.
 Grafana is intentionally bound to all interfaces for direct project-demo
 access on port 3000. Restrict that port to trusted source IPs outside the demo.
 
-Central Prometheus is bound to the monitoring server's private VPC IP
-(`10.0.1.56`) on port `9091`; node-exporter is bound to loopback. Do not
-commit Grafana credentials.
+Central Prometheus is bound to the monitoring server's private VPC IP on port
+`9091`; node-exporter is bound to loopback. Do not commit Grafana credentials.
 
 After changing `prometheus-server.yaml`, apply it and restart the server so it
 loads the updated ConfigMap:
@@ -30,7 +29,7 @@ kubectl rollout restart deployment/prometheus-server -n monitoring-agent
 The public EKS Prometheus UI exposes its Targets page without a password:
 
 ```text
-http://32.186.123.33:9090
+http://<monitoring-server-public-ip>:9090
 ```
 
 Nginx on the Monitoring Server proxies that port to the EKS Prometheus NodePort
