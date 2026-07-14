@@ -14,7 +14,7 @@ global:
 services:
   frontend:
     image: depi-frontend
-    tag: "2cf29bec5bc1a0c7e53b4a1cafa5fd7d1948ac4d"
+    tag: "479ab70d674b00e036b0162debcc10f9ca0d1218"
     replicas: 2
     port: 8080
     healthPath: /healthz
@@ -38,7 +38,7 @@ services:
 
   cargo-service:
     image: depi-cargo-service
-    tag: "2cf29bec5bc1a0c7e53b4a1cafa5fd7d1948ac4d"
+    tag: "479ab70d674b00e036b0162debcc10f9ca0d1218"
     replicas: 1
     port: 8000
     healthPath: /health
@@ -59,7 +59,7 @@ services:
 
   telemetry-service:
     image: depi-telemetry-service
-    tag: "2cf29bec5bc1a0c7e53b4a1cafa5fd7d1948ac4d"
+    tag: "479ab70d674b00e036b0162debcc10f9ca0d1218"
     replicas: 2
     port: 8000
     healthPath: /health
@@ -83,7 +83,7 @@ services:
 
   routing-service:
     image: depi-routing-service
-    tag: "2cf29bec5bc1a0c7e53b4a1cafa5fd7d1948ac4d"
+    tag: "479ab70d674b00e036b0162debcc10f9ca0d1218"
     replicas: 2
     port: 8000
     healthPath: /health
